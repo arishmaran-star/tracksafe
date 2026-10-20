@@ -3,7 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from database import get_db_connection
 
-# 1. The Data Bouncer (Checks incoming JSON data)
+# Import Badrinathan's CP-SAT algorithm function from scheduler.py
+from scheduler import run_cp_sat_scheduler
+
 class DefectCreate(BaseModel):
     assetid: int
     reportedby_empid: str
@@ -11,7 +13,7 @@ class DefectCreate(BaseModel):
     severity_score: int = Field(..., ge=1, le=100)
     is_emergency: bool = False
 
-app = FastAPI(title="TrackSafe API")
+app = FastAPI(title="TrackSafe - Full Stack Integrated Edition")
 
 app.add_middleware(
     CORSMiddleware,
@@ -23,9 +25,8 @@ app.add_middleware(
 
 @app.get("/")
 def read_root():
-    return {"status": "Online", "message": "TrackSafe Server is running!"}
+    return {"status": "Online", "system": "TrackSafe Server & CP-SAT Engine Integrated"}
 
-# 2. READ DEFECTS (The GET endpoint you already tested)
 @app.get("/api/defects")
 def get_all_defects():
     conn = get_db_connection()
@@ -42,32 +43,25 @@ def get_all_defects():
         """
         cursor.execute(query)
         return cursor.fetchall()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
     finally:
         cursor.close()
         conn.close()
 
-# 3. CREATE DEFECT (The new POST endpoint!)
 @app.post("/api/defects", status_code=status.HTTP_201_CREATED)
 def create_defect(defect: DefectCreate):
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        # Check if Employee matches Asset Department (Your Safety Rule)
         cursor.execute("SELECT DeptID FROM Employees WHERE EmpID = %s;", (defect.reportedby_empid,))
         emp = cursor.fetchone()
-        
         cursor.execute("SELECT DeptID FROM Assets WHERE AssetID = %s;", (defect.assetid,))
         asset = cursor.fetchone()
 
         if not emp or not asset:
             raise HTTPException(status_code=404, detail="Employee or Asset not found")
-            
         if emp['deptid'] != asset['deptid']:
             raise HTTPException(status_code=400, detail="Security Error: Department mismatch!")
 
-        # Insert the data using safe parameters (%s)
         insert_query = """
             INSERT INTO Defects (AssetID, ReportedBy_EmpID, Estimated_Mins, Severity_Score, Is_Emergency, Status)
             VALUES (%s, %s, %s, %s, %s, 'Pending')
@@ -77,16 +71,27 @@ def create_defect(defect: DefectCreate):
             defect.assetid, defect.reportedby_empid, 
             defect.estimated_mins, defect.severity_score, defect.is_emergency
         ))
-        
         new_id = cursor.fetchone()['defectid']
-        conn.commit() # Save to database
+        conn.commit()
         return {"message": "Defect added!", "defectid": new_id}
-
-    except HTTPException as he:
-        raise he
-    except Exception as e:
-        conn.rollback() # Cancel if error
-        raise HTTPException(status_code=500, detail=str(e))
     finally:
         cursor.close()
+        conn.close()
+
+# ========================================================
+# TRIGGER BADRINATHAN'S 7-DAY CP-SAT SCHEDULER ENGINE
+# ========================================================
+@app.post("/api/generate-schedule")
+def trigger_scheduling_engine():
+    """
+    Executes Badrinathan's Google OR-Tools CP-SAT scheduler 
+    across the 7-day horizon, enforcing the 3-hour minimum rule.
+    """
+    conn = get_db_connection()
+    try:
+        result = run_cp_sat_scheduler(conn)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
         conn.close()
