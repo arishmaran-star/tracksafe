@@ -705,25 +705,25 @@ async function fetchProposedBlocks() {
           <td class="py-3 px-3">${severityBadge}</td>
           <td class="py-3 px-3 font-bold text-slate-800">${b.duration_minutes}m</td>
           <td class="py-3 px-3">
-            <input
-              type="datetime-local"
-              id="start-time-${b.blockid}"
-              value="${startIso}"
+            <input 
+              type="datetime-local" 
+              id="start-time-${b.blockid}" 
+              value="${startIso}" 
               class="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white text-slate-800 font-mono font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none shadow-xs"
             >
           </td>
           <td class="py-3 px-3">
-            <input
-              type="datetime-local"
-              id="end-time-${b.blockid}"
-              value="${endIso}"
+            <input 
+              type="datetime-local" 
+              id="end-time-${b.blockid}" 
+              value="${endIso}" 
               class="px-2.5 py-1.5 border border-slate-300 rounded-lg text-xs bg-white text-slate-800 font-mono font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none shadow-xs"
             >
           </td>
           <td class="py-3 px-3">${collabBadge}</td>
           <td class="py-3 px-3 text-right">
-            <button
-              onclick="approveBlock(${b.blockid})"
+            <button 
+              onclick="approveBlock(${b.blockid})" 
               class="py-1.5 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs shadow-sm transition duration-150 inline-flex items-center space-x-1"
             >
               <span>✓ Approve Block</span>

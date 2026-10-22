@@ -91,7 +91,7 @@
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl">
-
+        
         <!-- CARD A: STATION MASTER LOGIN -->
         <div class="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
           <div>
@@ -186,7 +186,7 @@
     <!-- SCREEN 2: ENGINEER DASHBOARD (DEPARTMENT SEPARATION)      -->
     <!-- ========================================================= -->
     <section id="engineerDashboard" class="hidden space-y-6">
-
+      
       <!-- MANDATORY DASHBOARD HEADER (REGION & DEPARTMENT CONTEXT) -->
       <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -211,16 +211,16 @@
 
       <!-- ROW 1: DEFECT SUBMISSION FORM & MY DEPARTMENT'S REQUESTS -->
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
+        
         <!-- Defect Form (No manual EmpID or Dept inputs) -->
         <div class="lg:col-span-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
           <div class="border-b border-slate-100 pb-3">
             <h3 class="text-base font-bold text-slate-900">Request Track Maintenance</h3>
             <p class="text-xs text-slate-500 mt-0.5">Submit new defect for Katpadi Station Controller scheduling.</p>
           </div>
-
+          
           <form id="defectForm" onsubmit="handleDefectSubmit(event)" class="space-y-4">
-
+            
             <div>
               <label for="assetSelect" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Select Asset in Katpadi Region</label>
               <select id="assetSelect" required class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:outline-none">
@@ -377,7 +377,7 @@
     <!-- SCREEN 3: STATION MASTER / CONTROLLER DASHBOARD           -->
     <!-- ========================================================= -->
     <section id="controllerDashboard" class="hidden space-y-6">
-
+      
       <!-- MANDATORY DASHBOARD HEADER (REGION CONTEXT) -->
       <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -398,7 +398,7 @@
             <span id="algoSpinner" class="hidden animate-spin">⏳</span>
             <span id="algoBtnText">⚡ Run Scheduling Algorithm</span>
           </button>
-
+          
           <button onclick="refreshControllerData()" class="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold text-sm transition duration-150">
             ↻ Refresh All
           </button>
