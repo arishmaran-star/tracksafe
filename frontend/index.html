@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TrackSafe | Katpadi Station Block Scheduling System</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Custom scrollbars and subtle animation helpers */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col antialiased">
+
+  <!-- ========================================================= -->
+  <!-- TOP HEADER (Always Visible)                              -->
+  <!-- ========================================================= -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-blue-700 flex items-center justify-center text-white font-black text-xl shadow-sm tracking-tighter">
+          TS
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h1 class="text-lg font-bold text-slate-900 tracking-tight leading-none">TrackSafe</h1>
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 uppercase tracking-wider">Katpadi Division</span>
+          </div>
+          <p class="text-xs text-slate-500 font-medium mt-0.5">Railway Maintenance Block Scheduling System &bull; Pure Raw SQL &bull; CP-SAT</p>
+        </div>
+      </div>
+
+      <!-- Navigation & Active User Bar -->
+      <div id="userBar" class="hidden flex items-center space-x-4">
+        <div class="flex items-center space-x-2 bg-slate-100 py-1.5 px-3 rounded-full text-xs font-semibold text-slate-700">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span id="headerUserLabel">User</span>
+        </div>
+        <button onclick="logout()" class="text-xs font-semibold text-slate-500 hover:text-red-600 transition flex items-center space-x-1">
+          <span>Log Out</span>
+          <span>&rarr;</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================================================= -->
+  <!-- NOTIFICATION BANNER                                       -->
+  <!-- ========================================================= -->
+  <div id="alertBox" class="hidden max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 mt-4 transition-all duration-200">
+    <div id="alertContent" class="p-4 rounded-xl text-sm font-medium flex items-center justify-between shadow-sm">
+      <div class="flex items-center space-x-3">
+        <span id="alertIcon" class="text-lg font-bold">ℹ️</span>
+        <span id="alertMessage">Notification text</span>
+      </div>
+      <button onclick="dismissAlert()" class="text-lg font-bold leading-none ml-4 hover:opacity-75">&times;</button>
+    </div>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- MAIN VIEWPORT                                             -->
+  <!-- ========================================================= -->
+  <main class="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- ========================================================= -->
+    <!-- SCREEN 1: PRE-LOGIN AUTHENTICATION SCREEN                 -->
+    <!-- ========================================================= -->
+    <section id="loginScreen" class="py-8 flex flex-col items-center justify-center">
+      <div class="text-center max-w-2xl mx-auto mb-10">
+        <span class="px-3 py-1 text-xs font-bold uppercase tracking-wider text-blue-700 bg-blue-50 border border-blue-200 rounded-full">
+          Region: Katpadi Station (KPD) &bull; Southern Railway
+        </span>
+        <h2 class="text-3xl font-extrabold text-slate-900 mt-4 tracking-tight">Portal Authentication</h2>
+        <p class="text-slate-600 mt-2 text-sm leading-relaxed">
+          Log in with your official Katpadi region credentials. Department engineers must select their authorized branch before logging in.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl">
+
+        <!-- CARD A: STATION MASTER LOGIN -->
+        <div class="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div>
+            <div class="flex items-center space-x-3 mb-4">
+              <div class="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center text-xl font-bold">
+                🚦
+              </div>
+              <div>
+                <h3 class="text-lg font-bold text-slate-900">Station Master</h3>
+                <p class="text-xs text-slate-500">Katpadi Station Control Room</p>
+              </div>
+            </div>
+            <p class="text-slate-600 text-xs mb-6 leading-relaxed">
+              Supervise Katpadi train movements, execute the CP-SAT scheduling algorithm, and approve track possession maintenance blocks.
+            </p>
+
+            <form id="masterLoginForm" onsubmit="handleMasterLogin(event)" class="space-y-4">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Email or Employee ID</label>
+                <input type="text" id="masterEmail" value="master@katpadi.in" required placeholder="master@katpadi.in" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Password</label>
+                <input type="password" id="masterPassword" value="password" required placeholder="••••••••" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50">
+              </div>
+
+              <button type="submit" id="masterLoginBtn" class="w-full mt-2 py-3 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-sm shadow-sm transition duration-150">
+                Login as Controller &rarr;
+              </button>
+            </form>
+          </div>
+
+          <div class="mt-6 pt-4 border-t border-slate-100 text-[11px] text-slate-400">
+            Default Demo: <span class="font-mono text-slate-600">master@katpadi.in</span> / <span class="font-mono text-slate-600">password</span>
+          </div>
+        </div>
+
+        <!-- CARD B: ENGINEER LOGIN (DEPARTMENT-FIRST) -->
+        <div class="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div>
+            <div class="flex items-center space-x-3 mb-4">
+              <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center text-xl font-bold">
+                🔧
+              </div>
+              <div>
+                <h3 class="text-lg font-bold text-slate-900">Maintenance Engineer</h3>
+                <p class="text-xs text-slate-500">Department Field Operations</p>
+              </div>
+            </div>
+            <p class="text-slate-600 text-xs mb-6 leading-relaxed">
+              Submit track and asset defects. Your selected department must match your authorized credentials to be permitted.
+            </p>
+
+            <form id="engineerLoginForm" onsubmit="handleEngineerLogin(event)" class="space-y-4">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Choose Department (Required First)</label>
+                <select id="loginDeptSelect" required class="w-full px-3 py-2.5 border border-blue-300 rounded-xl text-sm font-semibold text-blue-900 bg-blue-50 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                  <option value="1">1 &bull; Track Engineering</option>
+                  <option value="2">2 &bull; Signal &amp; Telecom</option>
+                  <option value="3">3 &bull; Electrical (OHE)</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Email or Employee ID</label>
+                <input type="text" id="engineerEmail" value="track@katpadi.in" required placeholder="e.g. track@katpadi.in" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Password</label>
+                <input type="password" id="engineerPassword" value="password" required placeholder="••••••••" class="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-slate-50">
+              </div>
+
+              <button type="submit" id="engineerLoginBtn" class="w-full mt-2 py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-sm transition duration-150">
+                Login as Engineer &rarr;
+              </button>
+            </form>
+          </div>
+
+          <div class="mt-6 pt-4 border-t border-slate-100 text-[11px] text-slate-400 space-y-0.5">
+            <div>Track: <span class="font-mono text-slate-600">track@katpadi.in</span> &bull; Signal: <span class="font-mono text-slate-600">signal@katpadi.in</span></div>
+            <div>Electrical: <span class="font-mono text-slate-600">electrical@katpadi.in</span> (Pass: <span class="font-mono text-slate-600">password</span>)</div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+
+    <!-- ========================================================= -->
+    <!-- SCREEN 2: ENGINEER DASHBOARD (DEPARTMENT SEPARATION)      -->
+    <!-- ========================================================= -->
+    <section id="engineerDashboard" class="hidden space-y-6">
+
+      <!-- MANDATORY DASHBOARD HEADER (REGION & DEPARTMENT CONTEXT) -->
+      <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <div class="flex items-center space-x-3">
+            <span class="px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">
+              Region: Katpadi Station
+            </span>
+            <span id="engineerDeptBadge" class="px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-200">
+              Department: Track Engineering
+            </span>
+          </div>
+          <h2 class="text-2xl font-extrabold text-slate-900 mt-2 tracking-tight">Defect Reporting &amp; Department Console</h2>
+          <p class="text-xs text-slate-500 mt-0.5">Logged in as <span id="engineerNameLabel" class="font-bold text-slate-700">Engineer</span> (<span id="engineerIdLabel" class="font-mono">EMP</span>)</p>
+        </div>
+
+        <div class="flex items-center space-x-3">
+          <button onclick="refreshEngineerData()" class="py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold text-xs transition duration-150 flex items-center space-x-1">
+            <span>↻ Refresh All</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ROW 1: DEFECT SUBMISSION FORM & MY DEPARTMENT'S REQUESTS -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Defect Form (No manual EmpID or Dept inputs) -->
+        <div class="lg:col-span-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <div class="border-b border-slate-100 pb-3">
+            <h3 class="text-base font-bold text-slate-900">Request Track Maintenance</h3>
+            <p class="text-xs text-slate-500 mt-0.5">Submit new defect for Katpadi Station Controller scheduling.</p>
+          </div>
+
+          <form id="defectForm" onsubmit="handleDefectSubmit(event)" class="space-y-4">
+
+            <div>
+              <label for="assetSelect" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Select Asset in Katpadi Region</label>
+              <select id="assetSelect" required class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                <option value="">Loading Katpadi assets...</option>
+              </select>
+              <p class="text-[11px] text-slate-400 mt-1">Filtered exclusively to assets under your department.</p>
+            </div>
+
+            <div>
+              <label for="issueType" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Issue Type</label>
+              <select id="issueType" onchange="handleIssueTypeChange()" class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                <option value="Routine">Routine Maintenance (30 min)</option>
+                <option value="Repair">Active Repair Issue (60 min)</option>
+                <option value="Emergency">Critical Emergency (100 min - 24hr Target)</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="requiredTime" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Required Time (Minutes)</label>
+              <input type="number" id="requiredTime" value="30" min="1" required class="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm bg-slate-100 font-semibold focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              <p class="text-[11px] text-slate-400 mt-1">Auto-set by dropdown: Routine=30, Repair=60, Emergency=100. Editable if more time needed.</p>
+            </div>
+
+            <button type="submit" id="submitDefectBtn" class="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm shadow-sm transition duration-150">
+              Submit Defect to Station Master
+            </button>
+          </form>
+        </div>
+
+        <!-- BOX 1: MY DEPARTMENT'S REQUESTS -->
+        <div class="lg:col-span-8 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col">
+          <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+            <div>
+              <div class="flex items-center space-x-2">
+                <h3 class="text-base font-bold text-slate-900">My Department's Requests</h3>
+                <span id="myDeptBoxBadge" class="px-2.5 py-0.5 rounded text-[11px] font-bold bg-blue-100 text-blue-800">
+                  Track Engineering
+                </span>
+              </div>
+              <p class="text-xs text-slate-500 mt-0.5">Defects logged by engineers in your department awaiting or allocated into blocks.</p>
+            </div>
+            <span id="myDefectsCountBadge" class="px-2.5 py-1 text-xs font-bold rounded-full bg-slate-100 text-slate-700">
+              0 Requests
+            </span>
+          </div>
+
+          <div class="overflow-x-auto flex-grow">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="border-b border-slate-200 bg-slate-50 text-slate-600 font-bold uppercase tracking-wider">
+                  <th class="py-3 px-3">Defect ID</th>
+                  <th class="py-3 px-3">Asset</th>
+                  <th class="py-3 px-3">Katpadi Track</th>
+                  <th class="py-3 px-3">Issue Type</th>
+                  <th class="py-3 px-3">Req. Time</th>
+                  <th class="py-3 px-3">Reported By</th>
+                  <th class="py-3 px-3">Current Status</th>
+                </tr>
+              </thead>
+              <tbody id="myDefectsTableBody" class="divide-y divide-slate-100">
+                <tr><td colspan="7" class="py-6 text-center text-slate-400">Loading your department requests...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- BOX 3: MY APPROVED / ALLOCATED MAINTENANCE BLOCKS (WITH COLLABORATIVE HIGHLIGHT) -->
+      <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div>
+            <div class="flex items-center space-x-2">
+              <h3 class="text-base font-bold text-slate-900">My Approved / Allocated Maintenance Blocks</h3>
+              <span class="px-2.5 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800">
+                Locked In Schedule
+              </span>
+            </div>
+            <p class="text-xs text-slate-500 mt-0.5">
+              Scheduled track possession windows approved by the Katpadi Station Master that involve your department.
+            </p>
+          </div>
+          <span id="myApprovedBlocksCountBadge" class="px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+            0 Approved Blocks
+          </span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="border-b border-slate-200 bg-slate-50 text-slate-600 font-bold uppercase tracking-wider">
+                <th class="py-3 px-3">Block ID</th>
+                <th class="py-3 px-3">Katpadi Track</th>
+                <th class="py-3 px-3">Start Window</th>
+                <th class="py-3 px-3">End Window</th>
+                <th class="py-3 px-3">Duration</th>
+                <th class="py-3 px-3">Participating Departments</th>
+                <th class="py-3 px-3">Highest Issue Type</th>
+                <th class="py-3 px-3">Collaboration Status</th>
+                <th class="py-3 px-3">Block Status</th>
+              </tr>
+            </thead>
+            <tbody id="myApprovedBlocksTableBody" class="divide-y divide-slate-100">
+              <tr><td colspan="9" class="py-6 text-center text-slate-400">Loading your approved blocks...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- BOX 2: OTHER DEPARTMENTS' REQUESTS -->
+      <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div>
+            <div class="flex items-center space-x-2">
+              <h3 class="text-base font-bold text-slate-900">Other Departments' Requests</h3>
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600">
+                Katpadi Cross-Department Visibility
+              </span>
+            </div>
+            <p class="text-xs text-slate-500 mt-0.5">
+              Defects reported by other branches (Signal &amp; Telecom, Electrical OHE, Track) kept strictly separated from your department's queue.
+            </p>
+          </div>
+          <span id="otherDefectsCountBadge" class="px-2.5 py-1 text-xs font-bold rounded-full bg-slate-100 text-slate-700">
+            0 Requests
+          </span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="border-b border-slate-200 bg-slate-50 text-slate-600 font-bold uppercase tracking-wider">
+                <th class="py-3 px-3">Defect ID</th>
+                <th class="py-3 px-3">Department</th>
+                <th class="py-3 px-3">Asset</th>
+                <th class="py-3 px-3">Katpadi Track</th>
+                <th class="py-3 px-3">Issue Type</th>
+                <th class="py-3 px-3">Req. Time</th>
+                <th class="py-3 px-3">Reported By</th>
+                <th class="py-3 px-3">Current Status</th>
+              </tr>
+            </thead>
+            <tbody id="otherDefectsTableBody" class="divide-y divide-slate-100">
+              <tr><td colspan="8" class="py-6 text-center text-slate-400">Loading other department requests...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+
+    <!-- ========================================================= -->
+    <!-- SCREEN 3: STATION MASTER / CONTROLLER DASHBOARD           -->
+    <!-- ========================================================= -->
+    <section id="controllerDashboard" class="hidden space-y-6">
+
+      <!-- MANDATORY DASHBOARD HEADER (REGION CONTEXT) -->
+      <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <div class="flex items-center space-x-3">
+            <span class="px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">
+              Region: Katpadi Station
+            </span>
+            <span class="px-3 py-1 rounded-full text-xs font-bold bg-slate-900 text-white">
+              Console: Chief Controller &bull; KPD
+            </span>
+          </div>
+          <h2 class="text-2xl font-extrabold text-slate-900 mt-2 tracking-tight">Katpadi Station Master Control</h2>
+          <p class="text-xs text-slate-500 mt-0.5">Logged in as <span id="masterNameLabel" class="font-bold text-slate-700">Station Master</span></p>
+        </div>
+
+        <div class="flex items-center space-x-3">
+          <button id="runAlgorithmBtn" onclick="runSchedulingAlgorithm()" class="flex items-center space-x-2 py-2.5 px-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm shadow-sm transition duration-150">
+            <span id="algoSpinner" class="hidden animate-spin">⏳</span>
+            <span id="algoBtnText">⚡ Run Scheduling Algorithm</span>
+          </button>
+
+          <button onclick="refreshControllerData()" class="py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold text-sm transition duration-150">
+            ↻ Refresh All
+          </button>
+        </div>
+      </div>
+
+      <!-- 1. TRAIN MOVEMENT VISUALIZATION FOR KATPADI REGION -->
+      <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div>
+            <div class="flex items-center space-x-2">
+              <h3 class="text-base font-bold text-slate-900">Active Train Movements &bull; Katpadi Region</h3>
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">Live Timetable</span>
+            </div>
+            <p class="text-xs text-slate-500 mt-0.5">Visualize rail traffic corridors around Katpadi to evaluate conflicts before approving maintenance windows.</p>
+          </div>
+          <span id="movementsCountBadge" class="px-2.5 py-1 text-xs font-bold rounded-full bg-slate-100 text-slate-700">
+            0 Trains Scheduled
+          </span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="border-b border-slate-200 bg-slate-50 text-slate-600 font-bold uppercase tracking-wider">
+                <th class="py-3 px-3">Movement ID</th>
+                <th class="py-3 px-3">Train No.</th>
+                <th class="py-3 px-3">Train Name</th>
+                <th class="py-3 px-3">Assigned Katpadi Track</th>
+                <th class="py-3 px-3">Entry / Arrival Time</th>
+                <th class="py-3 px-3">Exit / Departure Time</th>
+                <th class="py-3 px-3">Region</th>
+              </tr>
+            </thead>
+            <tbody id="trainMovementsTableBody" class="divide-y divide-slate-100">
+              <tr><td colspan="7" class="py-6 text-center text-slate-400">Loading Katpadi train movements...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 2. PENDING DEFECTS IN KATPADI REGION -->
+      <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div>
+            <h3 class="text-base font-bold text-slate-900">Pending Track Defects in Katpadi Region</h3>
+            <p class="text-xs text-slate-500">Defects with status 'Pending' awaiting algorithm block allocation.</p>
+          </div>
+          <span id="pendingCountBadge" class="px-2.5 py-1 text-xs font-bold rounded-full bg-amber-100 text-amber-800">
+            0 Pending
+          </span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="border-b border-slate-200 bg-slate-50 text-slate-600 font-bold uppercase tracking-wider">
+                <th class="py-3 px-3">Defect ID</th>
+                <th class="py-3 px-3">Asset</th>
+                <th class="py-3 px-3">Track</th>
+                <th class="py-3 px-3">Department</th>
+                <th class="py-3 px-3">Issue Type</th>
+                <th class="py-3 px-3">Duration</th>
+                <th class="py-3 px-3">Reported By</th>
+                <th class="py-3 px-3">Status</th>
+              </tr>
+            </thead>
+            <tbody id="controllerDefectsTableBody" class="divide-y divide-slate-100">
+              <tr><td colspan="8" class="py-6 text-center text-slate-400">Loading pending defects...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 3. ALGORITHM PROPOSED BLOCKS & APPROVAL OVERRIDES -->
+      <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div>
+            <div class="flex items-center space-x-2">
+              <h3 class="text-base font-bold text-slate-900">Algorithm Proposed Maintenance Blocks</h3>
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800">CP-SAT Optimized</span>
+            </div>
+            <p class="text-xs text-slate-500 mt-1">
+              Enforces a <strong>strict 180-minute minimum block duration</strong> with <strong>zero train movement overlaps</strong> in the Katpadi region.
+              The Station Master can fine-tune Start Time and End Time via the datetime fields before clicking Approve.
+            </p>
+          </div>
+          <span id="proposedBlocksCountBadge" class="px-2.5 py-1 text-xs font-bold rounded-full bg-blue-100 text-blue-800">
+            0 Proposed
+          </span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="border-b border-slate-200 bg-slate-50 text-slate-600 font-bold uppercase tracking-wider">
+                <th class="py-3 px-3">Block ID</th>
+                <th class="py-3 px-3">Katpadi Track</th>
+                <th class="py-3 px-3">Assigned Department(s)</th>
+                <th class="py-3 px-3">Highest Severity</th>
+                <th class="py-3 px-3">Duration</th>
+                <th class="py-3 px-3">Start Time (Editable)</th>
+                <th class="py-3 px-3">End Time (Editable)</th>
+                <th class="py-3 px-3">Collaboration Badge</th>
+                <th class="py-3 px-3 text-right">Station Master Action</th>
+              </tr>
+            </thead>
+            <tbody id="blocksTableBody" class="divide-y divide-slate-100">
+              <tr><td colspan="9" class="py-6 text-center text-slate-400">No proposed blocks pending. Click "⚡ Run Scheduling Algorithm" above.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 4. APPROVED MAINTENANCE BLOCKS (MASTER CONTROL VIEW) -->
+      <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div>
+            <div class="flex items-center space-x-2">
+              <h3 class="text-base font-bold text-slate-900">Approved Maintenance Blocks &bull; Finalized Schedule</h3>
+              <span class="px-2.5 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800">
+                Official Possession Orders
+              </span>
+            </div>
+            <p class="text-xs text-slate-500 mt-1">
+              Active possession orders locked into Katpadi operations. Highlights multi-department collaborative blocks where multiple departments share a single safety window.
+            </p>
+          </div>
+          <span id="controllerApprovedCountBadge" class="px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+            0 Approved
+          </span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="border-b border-slate-200 bg-slate-50 text-slate-600 font-bold uppercase tracking-wider">
+                <th class="py-3 px-3">Block ID</th>
+                <th class="py-3 px-3">Katpadi Track</th>
+                <th class="py-3 px-3">Assigned Department(s)</th>
+                <th class="py-3 px-3">Highest Issue Type</th>
+                <th class="py-3 px-3">Start Time</th>
+                <th class="py-3 px-3">End Time</th>
+                <th class="py-3 px-3">Duration</th>
+                <th class="py-3 px-3">Collaboration Status</th>
+                <th class="py-3 px-3">Status</th>
+              </tr>
+            </thead>
+            <tbody id="controllerApprovedBlocksTableBody" class="divide-y divide-slate-100">
+              <tr><td colspan="9" class="py-6 text-center text-slate-400">Loading approved blocks...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ========================================================= -->
+  <!-- FOOTER                                                    -->
+  <!-- ========================================================= -->
+  <footer class="bg-white border-t border-slate-200 py-4 mt-auto">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400">
+      <span>TrackSafe Katpadi Division &bull; Pure Raw SQL &bull; Google OR-Tools CP-SAT</span>
+      <span class="mt-2 sm:mt-0">BCNF Relational Model &bull; Supabase PostgreSQL</span>
+    </div>
+  </footer>
+
+  <!-- Application Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
