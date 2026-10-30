@@ -61,6 +61,10 @@ class BlockApproveRequest(BaseModel):
     new_end_time: str = Field(..., description="Approved end time (ISO string)")
 
 
+class BlockStatusUpdate(BaseModel):
+    status: str = Field(..., description="Target execution status: 'In Progress' or 'Completed'")
+
+
 # -------------------------------------------------------------
 # AUTHENTICATION & LOGIN ENDPOINTS (PURE RAW SQL)
 # -------------------------------------------------------------
@@ -393,12 +397,15 @@ def get_blocks(status: Optional[str] = None):
     Advanced SQL JOIN & Aggregation:
     Bundles all Department names, DeptIDs, and highest Severity associated with each BlockID.
     Calculates is_collaborative where COUNT(DISTINCT dept.DeptID) > 1.
-    Allows filtering by status (?status=Algorithm_Proposed or ?status=Approved or all).
+    Allows filtering by status (?status=Algorithm_Proposed or ?status=Approved or comma-separated or all).
     """
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        filter_status = None if (not status or status.lower() == 'all') else status
+        if not status or status.lower() == 'all':
+            statuses = None
+        else:
+            statuses = [s.strip() for s in status.split(',') if s.strip()]
 
         query = """
             SELECT 
@@ -427,13 +434,90 @@ def get_blocks(status: Optional[str] = None):
             LEFT JOIN Defects d ON bt.DefectID = d.DefectID
             LEFT JOIN Assets a ON d.AssetID = a.AssetID
             LEFT JOIN Departments dept ON a.DeptID = dept.DeptID
-            WHERE (%s IS NULL OR b.Block_Status = %s)
+            WHERE (%s IS NULL OR b.Block_Status = ANY(%s))
             GROUP BY b.BlockID, b.TrackID, t.Track_Name, b.Start_Time, b.End_Time, b.Block_Status
             ORDER BY b.Start_Time ASC;
         """
-        cursor.execute(query, (filter_status, filter_status))
+        cursor.execute(query, (statuses, statuses))
         blocks = cursor.fetchall()
         return blocks
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@app.put("/api/blocks/{blockid}/status")
+def update_block_status(blockid: int, payload: BlockStatusUpdate):
+    """
+    Pure Raw SQL endpoint: PUT /api/blocks/{blockid}/status
+    Accepts JSON payload: { "status": "string" } (Acceptable values: 'In Progress', 'Completed').
+    Executes raw SQL UPDATE on Maintenance_Blocks to change Block_Status,
+    and cascades this status update to the associated Defects via Block_Tasks.
+    """
+    valid_statuses = ["In Progress", "Completed"]
+    normalized_status = payload.status.strip()
+
+    # Case-insensitive validation that matches the exact canonical casing
+    matched_status = None
+    for valid_s in valid_statuses:
+        if valid_s.lower() == normalized_status.lower():
+            matched_status = valid_s
+            break
+
+    if not matched_status:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid status '{payload.status}'. Acceptable values: 'In Progress', 'Completed'."
+        )
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        # Check if block exists
+        cursor.execute(
+            "SELECT BlockID, TrackID, Start_Time, End_Time, Block_Status FROM Maintenance_Blocks WHERE BlockID = %s;",
+            (blockid,)
+        )
+        block = cursor.fetchone()
+        if not block:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Maintenance Block #{blockid} not found."
+            )
+
+        # 1. Update Maintenance_Blocks table
+        update_block_query = """
+            UPDATE Maintenance_Blocks
+            SET Block_Status = %s
+            WHERE BlockID = %s
+            RETURNING BlockID, TrackID, Start_Time, End_Time, Block_Status;
+        """
+        cursor.execute(update_block_query, (matched_status, blockid))
+        updated_block = cursor.fetchone()
+
+        # 2. Cascade status update to associated Defects via Block_Tasks
+        update_defects_query = """
+            UPDATE Defects
+            SET Status = %s
+            WHERE DefectID IN (
+                SELECT DefectID FROM Block_Tasks WHERE BlockID = %s
+            );
+        """
+        cursor.execute(update_defects_query, (matched_status, blockid))
+
+        conn.commit()
+        return {
+            "success": True,
+            "message": f"Block #{blockid} and associated defect tasks successfully updated to '{matched_status}'.",
+            "block": updated_block
+        }
+
+    except HTTPException:
+        conn.rollback()
+        raise
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
     finally:
         cursor.close()
         conn.close()
@@ -450,12 +534,28 @@ def approve_block(payload: BlockApproveRequest):
     cursor = conn.cursor()
     try:
         cursor.execute(
-            "SELECT BlockID, Block_Status FROM Maintenance_Blocks WHERE BlockID = %s;",
+            "SELECT BlockID, TrackID, Block_Status FROM Maintenance_Blocks WHERE BlockID = %s;",
             (payload.blockid,)
         )
         block = cursor.fetchone()
         if not block:
             raise HTTPException(status_code=404, detail=f"Maintenance Block #{payload.blockid} not found.")
+
+        # Safety Check: Prevent scheduling/approving blocks that overlap with train movements on the same track
+        cursor.execute("""
+            SELECT tm.MovementID, t.Train_Number, t.Train_Type, tm.Entry_Time, tm.Exit_Time
+            FROM Train_Movements tm
+            JOIN Trains t ON tm.TrainID = t.TrainID
+            WHERE tm.TrackID = %s
+              AND tm.Entry_Time < %s
+              AND tm.Exit_Time > %s;
+        """, (block['trackid'], payload.new_end_time, payload.new_start_time))
+        train_conflict = cursor.fetchone()
+        if train_conflict:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Safety Violation: Block window overlaps with Train #{train_conflict['train_number']} ({train_conflict['train_type']}) on this track from {train_conflict['entry_time']} to {train_conflict['exit_time']}."
+            )
 
         update_query = """
             UPDATE Maintenance_Blocks
